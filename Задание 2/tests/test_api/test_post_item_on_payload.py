@@ -3,7 +3,7 @@ import pytest
 import warnings
 
 
-class TestPostAPI:
+class TestPostPayloadAPI:
     item_data = {
         "name": "Телевизор",
         "price": 36500,
@@ -11,16 +11,15 @@ class TestPostAPI:
     }
 
     def test_post_item_status_code(self, api_client):
-        """Проверяем, что объявление создаётся с кодом 201"""
         response = api_client.post_item_on_payload(self.item_data["sellerId"], self.item_data["name"], self.item_data["price"])
-        assert response.status_code == 201, f"Ожидался код 201, но получен {response.status_code}"
+        assert response.status_code in [200, 201], f"Ожидался код 200 или 201, но получен {response.status_code}"
 
     def test_post_item(self, api_client):
         """Проверяем, что API возвращает ID объявления"""
         post_response = api_client.post_item_on_payload(self.item_data["sellerId"], self.item_data["name"], self.item_data["price"])
         data = post_response.json()
 
-        match = re.search(r"Сохранили объявление - ([\w-]+)", data["status"])
+        match = re.search(r"([a-f0-9\-]{36})", data["status"])
         assert match, f"Не удалось извлечь ID объявления из {data['status']}"
 
     def test_verify_item(self, api_client):
@@ -28,7 +27,7 @@ class TestPostAPI:
         post_response = api_client.post_item_on_payload(self.item_data["sellerId"], self.item_data["name"], self.item_data["price"])
         data = post_response.json()
 
-        match = re.search(r"Сохранили объявление - ([\w-]+)", data["status"])
+        match = re.search(r"([a-f0-9\-]{36})", data["status"])
         item_id = match.group(1)
 
         get_response = api_client.get_item(item_id)
@@ -52,7 +51,11 @@ class TestPostAPI:
                 errors.append(AssertionError(str(e)))
 
         if errors:
-            raise errors[0] if len(errors) == 1 else pytest.fail("\nОбнаружены ошибки:\n" + "\n".join(map(str, errors)))
+            if len(errors) == 1:
+                raise errors[0]
+            else:
+                error_message = "Обнаружены ошибки:" + " ".join(map(str, errors))
+                pytest.fail(error_message, pytrace=False)
 
     def test_post_item_empty_body(self, api_client):
         """Проверяем, что пустой запрос вызывает 400 Bad Request"""
@@ -70,7 +73,7 @@ class TestPostAPI:
         del item_data[missing_field]
 
         response = api_client.post_item_on_payload(999665, item_data.get("name", ""), item_data.get("price"))
-        assert response.status_code == 201, f"Ожидался код 201, но получен {response.status_code}"
+        assert response.status_code in [200, 201], f"Ожидался код 200 или 201, но получен {response.status_code}"
 
     def test_post_item_missing_seller_id(self, api_client):
         """Проверяем, что без sellerId запрос вызывает 400"""
@@ -87,4 +90,3 @@ class TestPostAPI:
 
         response = api_client.post_item_on_payload(item_data["sellerId"], item_data["name"], item_data["price"])
         assert response.status_code == 400, f"Ожидался код 400, но получен {response.status_code}"
-

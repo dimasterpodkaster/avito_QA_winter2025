@@ -13,8 +13,6 @@ class TestAdvertisementAPI:
         assert response.status_code == 200, f"Ожидался код 200, но получен {response.status_code}"
         assert response.content, "Пустой ответ от сервера"
 
-    import pytest
-
     def test_get_item_structure(self, api_client, sample_item_id):
         response = api_client.get_item(sample_item_id)
         assert response.status_code == 200, f"Ожидался код 200, но получен {response.status_code}"
@@ -37,12 +35,16 @@ class TestAdvertisementAPI:
             if not isinstance(statistics, dict):
                 errors.append(TypeError(f"Поле 'statistics' должно быть словарем, получено {type(statistics)}"))
 
-            for stat_field in ["contacts", "like", "viewCount"]:
+            for stat_field in ["contacts", "likes", "viewCount"]:
                 if stat_field not in statistics:
                     errors.append(KeyError(f"Ответ не содержит ключ '{stat_field}'"))
 
         if errors:
-            raise errors[0] if len(errors) == 1 else pytest.fail("\n".join(map(str, errors)))
+            if len(errors) == 1:
+                raise errors[0]
+            else:
+                error_message = "Обнаружены ошибки:" + " ".join(map(str, errors))
+                pytest.fail(error_message, pytrace=False)
 
     def test_get_item_data_types(self, api_client, sample_item_id):
         response = api_client.get_item(sample_item_id)
@@ -69,7 +71,7 @@ class TestAdvertisementAPI:
                 errors.append(TypeError(f"Поле 'statistics' должно быть словарем, получено {type(statistics)}"))
                 continue
 
-            for stat_field in ["contacts", "like", "viewCount"]:
+            for stat_field in ["contacts", "likes", "viewCount"]:
                 try:
                     assert isinstance(statistics[stat_field], int), \
                         f"Поле '{stat_field}' должно быть числом, а получено {type(statistics[stat_field])}"
@@ -81,7 +83,11 @@ class TestAdvertisementAPI:
                     errors.append(TypeError(f"Поле '{stat_field}' содержит некорректный тип данных"))
 
         if errors:
-            raise errors[0] if len(errors) == 1 else pytest.fail("\n".join(map(str, errors)))
+            if len(errors) == 1:
+                raise errors[0]
+            else:
+                error_message = "Обнаружены ошибки:" + " ".join(map(str, errors))
+                pytest.fail(error_message, pytrace=False)
 
     def test_get_non_existent_item(self, api_client):
         fake_id = "00000000-0000-0000-0000-000000000000"
@@ -96,7 +102,6 @@ class TestAdvertisementAPI:
         assert response.status_code == 400, f"Ожидался код 400, но получен {response.status_code}"
 
     def test_get_item_no_extra_fields(self, api_client, sample_item_id):
-        """Проверяем, что API не возвращает лишние поля"""
         response = api_client.get_item(sample_item_id)
         data = response.json()
         items = data if isinstance(data, list) else [data]
@@ -113,7 +118,11 @@ class TestAdvertisementAPI:
                 errors.append(KeyError(f"Найдены лишние поля: {unexpected_fields}"))
 
         if errors:
-            raise errors[0] if len(errors) == 1 else pytest.fail("\n".join(map(str, errors)))
+            if len(errors) == 1:
+                raise errors[0]
+            else:
+                error_message = "Обнаружены ошибки:" + " ".join(map(str, errors))
+                pytest.fail(error_message, pytrace=False)
 
 
 

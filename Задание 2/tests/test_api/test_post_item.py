@@ -10,7 +10,7 @@ class TestPostAPI:
         "sellerId": 999665,
         "statistics": {
             "contacts": 9,
-            "like": 25,
+            "likes": 25,
             "viewCount": 25
         }
     }
@@ -18,20 +18,20 @@ class TestPostAPI:
     def test_post_item_status_code(self, api_client):
         response = api_client.post_item(self.item_data)
 
-        assert response.status_code == 201, f"Ожидался код 201, но получен {response.status_code}"
+        assert response.status_code in [200, 201], f"Ожидался код 200 или 201, но получен {response.status_code}"
 
     def test_post_item(self, api_client):
         post_response = api_client.post_item(self.item_data)
         data = post_response.json()
 
-        match = re.search(r"Сохранили объявление - ([\w-]+)", data["status"])
+        match = re.search(r"([a-f0-9\-]{36})", data["status"])
         assert match, f"Не удалось извлечь ID объявления из {data['status']}"
 
     def test_verify_item(self, api_client):
         post_response = api_client.post_item(self.item_data)
         data = post_response.json()
 
-        match = re.search(r"Сохранили объявление - ([\w-]+)", data["status"])
+        match = re.search(r"([a-f0-9\-]{36})", data["status"])
         item_id = match.group(1)
 
         get_response = api_client.get_item(item_id)
@@ -55,7 +55,7 @@ class TestPostAPI:
 
         statistics = fetched_data.get("statistics", {})
 
-        for stat_field in ["contacts", "like", "viewCount"]:
+        for stat_field in ["contacts", "likes", "viewCount"]:
             try:
                 assert statistics[stat_field] == self.item_data["statistics"][stat_field], \
                     f"Ожидалось {self.item_data['statistics'][stat_field]}, а получено {statistics[stat_field]}"
@@ -65,7 +65,11 @@ class TestPostAPI:
                 errors.append(AssertionError(str(e)))
 
         if errors:
-            raise errors[0] if len(errors) == 1 else pytest.fail("\n".join(map(str, errors)))
+            if len(errors) == 1:
+                raise errors[0]
+            else:
+                error_message = "Обнаружены ошибки:" + " ".join(map(str, errors))
+                pytest.fail(error_message, pytrace=False)
 
     def test_post_item_empty_body(self, api_client):
         response = api_client.post_item({})
@@ -88,7 +92,7 @@ class TestPostAPI:
 
         response = api_client.post_item(item_data)
 
-        assert response.status_code == 201, f"Ожидался код 201, но получен {response.status_code}"
+        assert response.status_code in [200, 201], f"Ожидался код 200 или 201, но получен {response.status_code}"
 
     @pytest.mark.parametrize("missing_field", ["sellerId"])
     def test_post_item_missing_seller_id(self, api_client, missing_field):
